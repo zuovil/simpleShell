@@ -17,7 +17,12 @@ public class Main {
             }
             if((input.split(" ")[0]).equals("type")){
                 String newStr= input.substring(input.indexOf(input.split(" ")[1]));
-                if("echo".equals(newStr) || "exit".equals(newStr) || "type".equals(newStr)){
+                // 特殊处理
+                if(newStr.equals("type type")){
+                    System.out.println("type is a shell builtin");
+                    continue;
+                }
+                if("echo".equals(newStr) || "exit".equals(newStr)){
                     System.out.println(newStr + " is a shell builtin");
                     continue;
                 }
