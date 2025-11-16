@@ -15,6 +15,15 @@ public class Main {
                 System.out.println(newStr);
                 continue;
             }
+            if((input.split(" ")[0]).equals("type")){
+                String newStr= input.substring(input.indexOf(input.split(" ")[1]));
+                if("echo".equals(newStr) || "exit".equals(newStr)){
+                    System.out.println(newStr + " is a shell builtin");
+                    continue;
+                }
+                System.out.println(newStr + ": not found");
+                continue;
+            }
             System.out.println(input + ": command not found");
         }
     }
