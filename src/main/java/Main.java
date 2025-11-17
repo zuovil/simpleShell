@@ -1,8 +1,5 @@
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
+import java.io.*;
 import java.util.*;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class Main {
@@ -16,12 +13,13 @@ public class Main {
             if(input.equals("exit 0")){
                 break;
             }
-            if((input.split(" ")[0]).equals("echo")){
+            String command = input.split(" ")[0];
+            if("echo".equals(command)) {
                 String newStr= input.substring(input.indexOf(input.split(" ")[1]));
                 System.out.println(newStr);
                 continue;
             }
-            if((input.split(" ")[0]).equals("type")){
+            if("type".equals(command)) {
                 String newStr= input.substring(input.indexOf(input.split(" ")[1]));
                 // 特殊处理
                 if(newStr.equals("type type")){
@@ -39,6 +37,15 @@ public class Main {
                 }
 
                 System.out.println(newStr + ": not found");
+                continue;
+            }
+            if(pathMap.containsKey(command)){
+                Process process = Runtime.getRuntime().exec(input.split(" "));
+                try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (br.ready()) {
+                        System.out.println(br.readLine());
+                    }
+                }
                 continue;
             }
             System.out.println(input + ": command not found");
