@@ -13,58 +13,21 @@ public class Main {
             if(input.equals("exit 0")){
                 break;
             }
-            String command = input.split(" ")[0];
-            if("echo".equals(command)) {
-                String newStr= input.substring(input.indexOf(input.split(" ")[1]));
-                long count = newStr.chars().filter(c -> c == '\'').count();
-                if(count == 0 || count == 1) {
-                    System.out.println(newStr.replaceAll("\\s+", " "));
-                    continue;
+            Command command = Command.fromInput(input);
+            if(command == null){
+                continue;
+            }
+            String commandName = command.getCommandName();
+            List<String> params = new ArrayList<>(Arrays.asList(command.getArgsSanitized()));;
+            if("echo".equals(commandName)) {
+                for (String param : params) {
+                    System.out.print(param);
                 }
-                if(count % 2 == 0) {
-                    if(newStr.endsWith("'")) {
-                        System.out.println(String.join("", newStr.split("'")));
-                    } else {
-                        String after = newStr.substring(newStr.lastIndexOf("'") + 1).replaceAll("\\s+", " ");
-                        String before = newStr.substring(0, newStr.lastIndexOf("'"));
-                        String newStr1 = before + after;
-                        System.out.println(String.join("", newStr1.split("'")));
-                    }
-                    continue;
-                } else {
-                    String after = newStr.substring(newStr.lastIndexOf("'")).replaceAll("\\s+", " ");
-                    String before = newStr.substring(0, newStr.lastIndexOf("'"));
-                    System.out.println(String.join("", before.split("'")) + after);
-                    continue;
-                }
+                System.out.println();
+                continue;
             }
 
-            if("cat".equals(command)) {
-                String paramString = input.substring(input.indexOf(input.split(" ")[1]));
-                char[] chars = paramString.toCharArray();
-                List<Integer> singleQuoteList = new ArrayList<>();
-                List<String> params = new ArrayList<>();
-                for(int i = 0; i < chars.length; i++) {
-                    if(chars[i] == '\'') {
-                        singleQuoteList.add(i);
-                    }
-                }
-                int count = singleQuoteList.size();
-                if(!paramString.startsWith("'") || count < 2) {
-                    System.out.println();
-                    continue;
-                }
-
-                if(count % 2 != 0) {
-                    singleQuoteList.remove(singleQuoteList.size() - 1);
-                }
-
-                for (int i = 0; i < count - 1; i++) {
-                    String param = paramString.substring(singleQuoteList.get(i) + 1, singleQuoteList.get(i + 1));
-                    if(i % 2 == 0) {
-                        params.add(param);
-                    }
-                }
+            if("cat".equals(commandName)) {
                 params.add(0, "cat");
                 Process process = new ProcessBuilder(params).start();
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
@@ -76,33 +39,38 @@ public class Main {
                 continue;
 
             }
-            if("type".equals(command)) {
-                String newStr= input.substring(input.indexOf(input.split(" ")[1]));
-                // 特殊处理
-                if(newStr.equals("type type")){
-                    System.out.println("type is a shell builtin");
-                    continue;
-                }
-                if("echo".equals(newStr) || "exit".equals(newStr)) {
-                    System.out.println(newStr + " is a shell builtin");
+            if("type".equals(commandName)) {
+                Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit"));
+                String arg = String.join(" ", params);
+                if(builtin.contains(arg)){
+                    System.out.println(arg + " is a shell builtin");
                     continue;
                 }
 
-                if(pathMap.containsKey(newStr)){
-                    System.out.println(newStr + " is " + pathMap.get(newStr));
+                if(pathMap.containsKey(arg)){
+                    System.out.println(arg + " is " + pathMap.get(arg));
                     continue;
                 }
 
-                System.out.println(newStr + ": not found");
+                System.out.println(arg + ": not found");
                 continue;
             }
-            if(pathMap.containsKey(command)){
-                Process process = Runtime.getRuntime().exec(input.split(" "));
+
+            if(pathMap.containsKey(commandName)){
+                // 移除空格
+                params.removeIf(" "::equals);
+                params.add(0, commandName);
+                Process process = Runtime.getRuntime().exec(params.toArray(new String[0]));
+                // 得到process的输出的方式是getInputStream，这是因为我们要从Java 程序的角度来看，外部程序的输出对于Java来说就是输入，反之亦然。
                 try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                     while (br.ready()) {
                         System.out.println(br.readLine());
                     }
                 }
+                // 外部程序在执行结束后需自动关闭，否则不管是字符流还是字节流均由于既读不到数据，又读不到流结束符，从而出现阻塞Java进程运行的情况
+                // 如果exec启动的Process没有正确处理（stdout/stderr 未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
+                // 内部执行挂起（或资源耗尽），从而将会影响到下一次exec
+                // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
                 process.destroy();
                 continue;
             }
