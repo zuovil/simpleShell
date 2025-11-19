@@ -35,6 +35,7 @@ public class Main {
                         System.out.println(br.readLine());
                     }
                 }
+                process.waitFor();
                 process.destroy();
                 continue;
 
@@ -71,6 +72,7 @@ public class Main {
                 // 如果exec启动的Process没有正确处理（stdout/stderr 未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
                 // 内部执行挂起（或资源耗尽），从而将会影响到下一次exec
                 // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
+                process.waitFor();
                 process.destroy();
                 continue;
             }
