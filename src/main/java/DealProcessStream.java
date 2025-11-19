@@ -5,7 +5,7 @@ import java.io.InputStreamReader;
 
 public class DealProcessStream extends Thread {
 
-    private final InputStream inputStream;
+    private InputStream inputStream;
 
     public DealProcessStream(InputStream inputStream) {
         this.inputStream = inputStream;
