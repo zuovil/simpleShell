@@ -33,8 +33,12 @@ public class Main {
                 params.add(0, "cat");
                 Process process = new ProcessBuilder(params).start();
                 //新启两个线程
-                new DealProcessStream(process.getInputStream()).start();
-                new DealProcessStream(process.getErrorStream()).start();
+                DealProcessStream out = new DealProcessStream(process.getInputStream());
+                DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                out.start();
+                err.start();
+                out.join();
+                err.join();
                 process.waitFor();
                 // destroy() 只在需要强制杀进程时使用。否则可能正在读，IO就关闭了，然后报错Stream closed
 //                process.destroy();
@@ -70,8 +74,12 @@ public class Main {
                 // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
                 // 遇到process流阻塞通常有两个方法解决，一个是并发处理两个流信息，开启两个线程分别处理输出流与错误流（仅在同一个线程处理两个流依旧会发生阻塞，因为尽管看上去同步但仍有先后顺序，所以必须用线程并发）
                 // 2.将两个流合并为一个流，使用ProcessBuilder，将其redirectErrorStream(true)；将输出流与错误流合并
-                new DealProcessStream(process.getInputStream()).start();
-                new DealProcessStream(process.getErrorStream()).start();
+                DealProcessStream out = new DealProcessStream(process.getInputStream());
+                DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                out.start();
+                err.start();
+                out.join();
+                err.join();
                 process.waitFor();
                 continue;
             }
