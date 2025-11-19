@@ -30,6 +30,8 @@ public class Main {
             }
 
             if("cat".equals(commandName)) {
+                // 移除空格
+                params.removeIf(" "::equals);
                 params.add(0, "cat");
                 Process process = new ProcessBuilder(params).start();
                 //新启两个线程
