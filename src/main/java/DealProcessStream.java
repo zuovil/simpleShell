@@ -13,7 +13,10 @@ public class DealProcessStream extends Thread {
 
     public void run() {
 
-        try(BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))){
+        try{
+            // Process 的管道是敏感资源，在子线程关闭会打乱 Process 的正常生命周期
+            // 因此不能在这里关闭输入流，在这里关闭会导致Process甚至System.in输入流被提前关闭，影响后续进程（Process比较特殊）
+            BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
             String line;
             while ((line = br.readLine()) != null) {
                 System.out.println(line);
