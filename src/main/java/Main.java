@@ -5,10 +5,12 @@ import java.util.stream.Collectors;
 public class Main {
     public static void main(String[] args) throws Exception {
         // TODO: Uncomment the code below to pass the first stage
+        // 不能在循环里面重复创建Scanner，会导致 System.in 的底层流状态混乱。将会导致多个 Scanner 抢 System.in 的 buffer；
+        // 有的会执行 close()，把底层输入流关掉，JVM 认为 System.in 被关闭 → 读取 Process 的 stdout 时也可能报 Stream closed（因为底层都是 FileDescriptor 0/1/2，相关联）
+        Scanner scanner = new Scanner(System.in);
         while(true) {
             Map<String, String> pathMap = getEnv();
             System.out.print("$ ");
-            Scanner scanner = new Scanner(System.in);
             String input = scanner.nextLine();
             if(input.equals("exit 0")){
                 break;
@@ -34,7 +36,8 @@ public class Main {
                 new DealProcessStream(process.getInputStream()).start();
                 new DealProcessStream(process.getErrorStream()).start();
                 process.waitFor();
-                process.destroy();
+                // destroy() 只在需要强制杀进程时使用。否则可能正在读，IO就关闭了，然后报错Stream closed
+//                process.destroy();
                 continue;
 
             }
@@ -70,7 +73,6 @@ public class Main {
                 new DealProcessStream(process.getInputStream()).start();
                 new DealProcessStream(process.getErrorStream()).start();
                 process.waitFor();
-                process.destroy();
                 continue;
             }
             System.out.println(input + ": command not found");
