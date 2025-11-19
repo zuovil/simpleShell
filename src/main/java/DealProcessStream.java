@@ -5,7 +5,7 @@ import java.io.InputStreamReader;
 
 public class DealProcessStream extends Thread {
 
-    private InputStream inputStream;
+    private final InputStream inputStream;
 
     public DealProcessStream(InputStream inputStream) {
         this.inputStream = inputStream;
@@ -31,9 +31,6 @@ public class DealProcessStream extends Thread {
             try {
                 if (br != null) {
                     br.close();
-                }
-                if (inputStream != null) {
-                    inputStream.close();
                 }
             } catch (IOException e) {
                 System.out.println(e.getMessage());
