@@ -13,28 +13,13 @@ public class DealProcessStream extends Thread {
 
     public void run() {
 
-        InputStreamReader inputStreamReader = null;
-        BufferedReader br = null;
-
-        try {
-            inputStreamReader = new InputStreamReader(inputStream);
-            br = new BufferedReader(inputStreamReader);
-            //打印信息
-            String line = null;
+        try(BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))){
+            String line;
             while ((line = br.readLine()) != null) {
                 System.out.println(line);
             }
-
         } catch (IOException e) {
             System.out.println(e.getMessage());
-        } finally {
-            try {
-                if (br != null) {
-                    br.close();
-                }
-            } catch (IOException e) {
-                System.out.println(e.getMessage());
-            }
         }
 
     }

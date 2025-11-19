@@ -30,15 +30,10 @@ public class Main {
             if("cat".equals(commandName)) {
                 params.add(0, "cat");
                 Process process = new ProcessBuilder(params).start();
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (br.ready()) {
-                        System.out.println(br.readLine());
-                    }
-                }
-                process.waitFor();
                 //新启两个线程
                 new DealProcessStream(process.getInputStream()).start();
                 new DealProcessStream(process.getErrorStream()).start();
+                process.waitFor();
                 process.destroy();
                 continue;
 
@@ -66,18 +61,15 @@ public class Main {
                 params.add(0, commandName);
                 Process process = Runtime.getRuntime().exec(params.toArray(new String[0]));
                 // 得到process的输出的方式是getInputStream，这是因为我们要从Java 程序的角度来看，外部程序的输出对于Java来说就是输入，反之亦然。
-                try (BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (br.ready()) {
-                        System.out.println(br.readLine());
-                    }
-                }
                 // 外部程序在执行结束后需自动关闭，否则不管是字符流还是字节流均由于既读不到数据，又读不到流结束符，从而出现阻塞Java进程运行的情况
-                // 如果exec启动的Process没有正确处理（stdout/stderr 未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
+                // 如果exec启动的Process没有正确处理（stdout/stderr 有一个未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
                 // 内部执行挂起（或资源耗尽），从而将会影响到下一次exec
                 // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
-                process.waitFor();
+                // 遇到process流阻塞通常有两个方法解决，一个是并发处理两个流信息，开启两个线程分别处理输出流与错误流（仅在同一个线程处理两个流依旧会发生阻塞，因为尽管看上去同步但仍有先后顺序，所以必须用线程并发）
+                // 2.将两个流合并为一个流，使用ProcessBuilder，将其redirectErrorStream(true)；将输出流与错误流合并
                 new DealProcessStream(process.getInputStream()).start();
                 new DealProcessStream(process.getErrorStream()).start();
+                process.waitFor();
                 process.destroy();
                 continue;
             }
