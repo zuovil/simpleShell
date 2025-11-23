@@ -53,10 +53,6 @@ public class Command {
                         quoteDepth--;
                     } else {
                         // '\"test script\"'
-                        if(c == '\\') {
-                            state = ESCAPE;
-                            break;
-                        }
                         cur.append(c);
                         lastCharWasSpace = false;
                         //if (c == ' ') quoteDepth = Math.max(quoteDepth, 1);
