@@ -67,8 +67,28 @@ public class Main {
             if(pathMap.containsKey(commandName)){
                 // 移除空格
                 params.removeIf(" "::equals);
+                boolean isRedirect = false;
+                String redirectFileName = params.get(params.size() - 1);
+                if(params.contains(">")){
+                    List<String> beforeRedirect = new ArrayList<>();
+                    for(String param : params) {
+                        if(param.equals(">")){
+                            isRedirect = true;
+                        }
+                        if(!isRedirect) {
+                           beforeRedirect.add(param);
+                        }
+                    }
+                    params = beforeRedirect;
+                }
                 params.add(0, commandName);
-                Process process = Runtime.getRuntime().exec(params.toArray(new String[0]));
+                Process process;
+                if(isRedirect) {
+                    ProcessBuilder processBuilder = new ProcessBuilder(params);
+                    processBuilder.redirectOutput(new File(redirectFileName));
+                    process = processBuilder.start();
+                }
+                process = Runtime.getRuntime().exec(params.toArray(new String[0]));
                 // 得到process的输出的方式是getInputStream，这是因为我们要从Java 程序的角度来看，外部程序的输出对于Java来说就是输入，反之亦然。
                 // 外部程序在执行结束后需自动关闭，否则不管是字符流还是字节流均由于既读不到数据，又读不到流结束符，从而出现阻塞Java进程运行的情况
                 // 如果exec启动的Process没有正确处理（stdout/stderr 有一个未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
