@@ -23,7 +23,7 @@ public class Main {
             List<String> params = command.getArgs();
             if("echo".equals(commandName)) {
                 // 检测重定向
-                if(params.contains(">") || params.contains("1>")) {
+                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
                     redirectOutput(params, commandName);
                     continue;
                 }
@@ -38,7 +38,7 @@ public class Main {
                 // 移除空格
                 params.removeIf(" "::equals);
                 // 检测重定向
-                if(params.contains(">") || params.contains("1>")) {
+                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
                     redirectOutput(params, commandName);
                     continue;
                 }
@@ -78,7 +78,7 @@ public class Main {
                 // 移除空格
                 params.removeIf(" "::equals);
                 // 检测重定向
-                if(params.contains(">") || params.contains("1>")) {
+                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
                     redirectOutput(params, commandName);
                     continue;
                 }
@@ -142,15 +142,19 @@ public class Main {
 
     private static void redirectOutput(List<String> params, String commandName) throws Exception {
         // 检测重定向
-        if(params.contains(">") || params.contains("1>")) {
+        if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
             // 移除空格
             params.removeIf(" "::equals);
             boolean isRedirect = false;
+            boolean stderr = false;
             String redirectFileName = params.get(params.size() - 1);
             List<String> beforeRedirect = new ArrayList<>();
             for(String param : params) {
-                if(param.equals(">") || param.equals("1>")){
+                if(param.equals(">") || param.equals("1>") || param.equals("2>")) {
                     isRedirect = true;
+                    if(param.equals("2>")) {
+                        stderr = true;
+                    }
                 }
                 if(!isRedirect) {
                     beforeRedirect.add(param);
@@ -159,12 +163,19 @@ public class Main {
             beforeRedirect.add(0, commandName);
             if(isRedirect) {
                 ProcessBuilder processBuilder = new ProcessBuilder(beforeRedirect);
-                processBuilder.redirectOutput(new File(redirectFileName));
-                Process process = processBuilder.start();
-                DealProcessStream err = new DealProcessStream(process.getErrorStream());
-                err.start();
-                err.join();
-                process.waitFor();
+
+                if(!stderr) {
+                    processBuilder.redirectOutput(new File(redirectFileName));
+                    Process process = processBuilder.start();
+                    DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                    err.start();
+                    err.join();
+                    process.waitFor();
+                } else {
+                    processBuilder.redirectError(new File(redirectFileName));
+                    Process process = processBuilder.start();
+                    process.waitFor();
+                }
             }
         }
     }
