@@ -73,9 +73,18 @@ public class Command {
                         if (i + 1 < input.length()) {
                             char nxt = input.charAt(i + 1);
                             if (nxt == '"') {
-                                cur.append(nxt);
                                 // '\"test script\"'
-                                quoteDepth ++;
+                                // cat "/tmp/owl/\"f 21\""
+                                if(quoteDepth <= 1) {
+                                    quoteDepth ++;
+                                } else {
+                                    quoteDepth --;
+                                }
+                                cur.append(nxt);
+
+                                i++;
+                            } else if(nxt == '\\') {
+                                cur.append(nxt);
                                 i++;
                             } else {
                                 cur.append('\\');
