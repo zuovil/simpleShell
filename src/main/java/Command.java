@@ -31,7 +31,6 @@ public class Command {
         boolean lastTokenEndedWithQuote = false; // 上一个 token 是否以真实引号结束
         boolean lastCharWasSpace = false;       // 折叠连续空格
         int quoteDepth = 0;                     // 引号层级计数器
-        int doubleQuoteDepth = 0;               // 双引号计数器
 
         for (int i = 0; i < input.length(); i++) {
             char c = input.charAt(i);
