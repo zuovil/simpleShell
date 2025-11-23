@@ -12,7 +12,7 @@ public class Main {
             Map<String, String> pathMap = getEnv();
             System.out.print("$ ");
             String input = scanner.nextLine();
-            if(input.equals("exit 0")){
+            if(input.equals("exit 0") | input.equals("exit")) {
                 break;
             }
             Command command = Command.fromInput(input);
@@ -20,7 +20,7 @@ public class Main {
                 continue;
             }
             String commandName = command.getCommandName();
-            List<String> params = new ArrayList<>(Arrays.asList(command.getArgsSanitized()));;
+            List<String> params = command.getArgs();;
             if("echo".equals(commandName)) {
                 for (String param : params) {
                     System.out.print(param);

@@ -1,123 +1,150 @@
 import java.util.*;
 
 public class Command {
-    public static final Set<Character> quoteSymbols = new HashSet<>(Arrays.asList('\'', '"', '`'));
-    private final String commandName;
+    private final String       commandName;
     private final List<String> args;
 
-    Command(String cmdName) {
-        commandName = cmdName;
-        args = new ArrayList<>();
+    public Command(String name) {
+        this.commandName = name;
+        this.args = new ArrayList<>();
     }
 
-    public static Command fromInput(String input)
-            throws IllegalArgumentException {
-        if (input.isEmpty()) {
-            return null;
-        }
+    public static Command fromInput(String input) {
+        if (input == null || input.isEmpty()) return null;
 
-        Command cmd = null;
-        StringBuilder sb = new StringBuilder();
-        int i;
-        // 解析命令
-        for (i = 0; i < input.length(); i++) {
-            char ch = input.charAt(i);
-            if (ch == ' ') {
-                if (cmd == null && !isEmpty(sb)) {
-                    cmd = new Command(sb.toString());
-                    sb.delete(0, sb.length());
-                }
-            } else if (cmd != null) {
-                break;
-            } else {
-                sb.append(ch);
-            }
-        }
+        List<String> words = splitShellWords(input);
+        if (words.isEmpty()) return null;
 
-        //如果单命令没有参数写入命令并返回
-        if (!isEmpty(sb)) {
-            cmd = new Command(sb.toString());
-            sb.delete(0, sb.length());
-        } else if (cmd == null) {
-            return null;
-        }
-
-        char quoteChar = '\0';
-        boolean isSpace = false;
-        // 解析参数
-        for (; i < input.length(); i++) {
-            char ch = input.charAt(i);
-            if (ch == ' ') {
-                if (quoteChar != '\0') {
-                    sb.append(ch);
-                } else if (!isSpace) {
-                    isSpace = true;
-                    if (!isEmpty(sb)) {
-                        cmd.addArg(sb.toString());
-                        sb.delete(0, sb.length());
-                    }
-                }
-            } else {
-                // 遇到非空字符关闭标记
-                if (isSpace) {
-                    isSpace = false;
-                    // 特殊的遇到引号间隔之中连续空格的情况，此类情况标记为一个空格
-                    cmd.addArg(" ");
-                }
-
-                sb.append(ch);
-                if (quoteSymbols.contains(ch)) {
-                    if (quoteChar == ch) {
-                        quoteChar = '\0';
-                        cmd.addArg(sb.toString());
-                        sb.delete(0, sb.length());
-                    } else if (quoteChar == '\0') {
-                        quoteChar = ch;
-                        if (sb.length() > 1) {
-                            cmd.addArg(sb.substring(0, sb.length() - 1));
-                            sb.delete(0, sb.length() - 1);
-                        }
-                    }
-                }
-            }
-        }
-
-        if (!isEmpty(sb)) {
-            if (isSpace) {
-                cmd.addArg(" ");
-            }
-
-            cmd.addArg(sb.toString());
-        }
-
+        Command cmd = new Command(words.get(0));
+        for (int i = 1; i < words.size(); i++) cmd.addArg(words.get(i));
         return cmd;
     }
 
-    public void addArg(String arg) { args.add(arg); }
+    private static List<String> splitShellWords(String input) {
+        // 状态: NORMAL 引号外的正常字符 IN_SINGLE 单引号 IN_DOUBLE 双引号 ESCAPE 反斜杠转义
+        final int NORMAL = 0, IN_SINGLE = 1, IN_DOUBLE = 2, ESCAPE = 3;
 
-    public String getCommandName() { return commandName.toLowerCase(); }
+        List<String> tokens = new ArrayList<>();
+        StringBuilder cur = new StringBuilder();
+        int state = NORMAL;
 
-    public String[] getArgs() { return args.toArray(new String[0]); }
+        boolean lastTokenEndedWithQuote = false; // 上一个 token 是否以真实引号结束
+        boolean lastCharWasSpace = false;       // 折叠连续空格
+        int quoteDepth = 0;                     // 引号层级计数器
+        int doubleQuoteDepth = 0;               // 双引号计数器
 
-    // 再次转译参数（去除引号）
-    public String[] getArgsSanitized() {
-        String[] arguments = getArgs();
-        for (int i = 0; i < arguments.length; i++) {
-            if (arguments[i].isEmpty())
-                continue;
-            if (arguments[i].length() > 1) {
-                char firstChar = arguments[i].charAt(0);
-                char lastChar = arguments[i].charAt(arguments[i].length() - 1);
-                if (firstChar == lastChar && quoteSymbols.contains(firstChar)) {
-                    arguments[i] = arguments[i].substring(1, arguments[i].length() - 1);
-                }
+        for (int i = 0; i < input.length(); i++) {
+            char c = input.charAt(i);
+
+            switch (state) {
+                case ESCAPE:
+                    cur.append(c);
+                    state = NORMAL;
+                    lastCharWasSpace = false;
+                    if(c == '\'' || c == '"') {
+                        quoteDepth ++;
+                    }
+                    break;
+
+                case IN_SINGLE:
+                    if (c == '\'') {
+                        state = NORMAL;
+                        lastTokenEndedWithQuote = true;
+                        quoteDepth--;
+                    } else {
+                        // '\"test script\"'
+                        if(c == '\\') {
+                            state = ESCAPE;
+                            break;
+                        }
+                        cur.append(c);
+                        lastCharWasSpace = false;
+                        //if (c == ' ') quoteDepth = Math.max(quoteDepth, 1);
+                    }
+                    break;
+
+                case IN_DOUBLE:
+                    if (c == '"') {
+                        state = NORMAL;
+                        lastTokenEndedWithQuote = true;
+                        quoteDepth--;
+                        if(quoteDepth == 0) {
+                            tokens.add(cur.toString());
+                            cur.setLength(0);
+                        }
+                        // echo "world test" "example""script"
+                    } else if (c == '\\') {
+                        if (i + 1 < input.length()) {
+                            char nxt = input.charAt(i + 1);
+                            if (nxt == '"') {
+                                cur.append(nxt);
+                                // '\"test script\"'
+                                quoteDepth ++;
+                                i++;
+                            } else {
+                                cur.append('\\');
+                            }
+                        } else {
+                            cur.append('\\');
+                        }
+                        lastCharWasSpace = false;
+                    } else {
+                        cur.append(c);
+                        lastCharWasSpace = false;
+                        // if (c == ' ') quoteDepth = Math.max(quoteDepth, 1);
+                    }
+                    break;
+
+                case NORMAL:
+                    if (c == '\\') {
+                        state = ESCAPE;
+                    } else if (c == '\'') {
+                        if (lastTokenEndedWithQuote && lastCharWasSpace && cur.length() == 0){
+                            tokens.add(" ");
+                            cur.setLength(0);
+                        }
+                        state = IN_SINGLE;
+                        lastTokenEndedWithQuote = false;
+                        quoteDepth++;
+                    } else if (c == '"') {
+                        if (lastTokenEndedWithQuote && lastCharWasSpace && cur.length() == 0) {
+                            tokens.add(" ");
+                            cur.setLength(0);
+                        }
+                        state = IN_DOUBLE;
+                        lastTokenEndedWithQuote = false;
+                        quoteDepth++;
+                    } else if (Character.isWhitespace(c)) {
+                        if (quoteDepth > 0) {
+                            cur.append(c);
+                        } else if (!lastCharWasSpace && cur.length() > 0) {
+                            tokens.add(cur.toString());
+                            cur.setLength(0);
+                        }
+                        lastCharWasSpace = true;
+                    } else {
+                        // echo "hello"  "world's"  shell""script
+                        // 排除首个，防止出现echo hello-> " hello"
+                        // echo shell     world(全部一般字符）
+                        if(tokens.size() > 1 && lastCharWasSpace && cur.length() == 0) {
+                            tokens.add(" ");
+                            cur.setLength(0);
+                        }
+                        cur.append(c);
+                        lastCharWasSpace = false;
+                        lastTokenEndedWithQuote = false;
+                    }
+                    break;
             }
         }
 
-        return arguments;
+        if (cur.length() > 0) tokens.add(cur.toString());
+        return tokens;
     }
 
-    private static boolean isEmpty(StringBuilder sb) {
-        return sb == null || sb.length() == 0;
-    }
+    public void addArg(String arg) {args.add(arg);}
+
+    public String getCommandName() {return commandName;}
+
+    public List<String> getArgs() {return args;}
 }
