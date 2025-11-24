@@ -174,24 +174,10 @@ public class Main {
                 } else {
                     processBuilder.redirectError(new File(redirectFileName));
                     Process process = processBuilder.start();
+                    DealProcessStream err = new DealProcessStream(process.getInputStream());
+                    err.start();
+                    err.join();
                     process.waitFor();
-                    // echo 特殊化处理，若echo不报错则被写入标准输出流（stdout）而不是标准错误流（stderr），此时屏幕会正常输出内容
-                    if(commandName.equals("echo")) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()));
-                        StringBuilder content = new StringBuilder();
-                        String line;
-                        while ((line = reader.readLine()) != null) {
-                            content.append(line).append("\n");
-                        }
-                        line = content.toString();
-                        if(line.isEmpty()) {
-                            beforeRedirect.remove(0);
-                            for (String param : beforeRedirect) {
-                                System.out.print(param);
-                            }
-                            System.out.println();
-                        }
-                    }
                 }
             }
         }
