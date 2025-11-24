@@ -27,6 +27,10 @@ public class Main {
                     redirectOutput(params, commandName);
                     continue;
                 }
+                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                    redirectAppendOutput(params, commandName);
+                    continue;
+                }
                 for (String param : params) {
                     System.out.print(param);
                 }
@@ -40,6 +44,10 @@ public class Main {
                 // 检测重定向
                 if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
                     redirectOutput(params, commandName);
+                    continue;
+                }
+                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                    redirectAppendOutput(params, commandName);
                     continue;
                 }
                 params.add(0, "cat");
@@ -80,6 +88,10 @@ public class Main {
                 // 检测重定向
                 if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
                     redirectOutput(params, commandName);
+                    continue;
+                }
+                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                    redirectAppendOutput(params, commandName);
                     continue;
                 }
                 params.add(0, commandName);
@@ -173,6 +185,50 @@ public class Main {
                     process.waitFor();
                 } else {
                     processBuilder.redirectError(new File(redirectFileName));
+                    Process process = processBuilder.start();
+                    DealProcessStream err = new DealProcessStream(process.getInputStream());
+                    err.start();
+                    err.join();
+                    process.waitFor();
+                }
+            }
+        }
+    }
+
+    // 检测>>，追加输出到文件内容末尾
+    private static void redirectAppendOutput(List<String> params, String commandName) throws Exception {
+        // 检测重定向
+        if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+            // 移除空格
+            params.removeIf(" "::equals);
+            boolean isRedirect = false;
+            boolean stderr = false;
+            String redirectFileName = params.get(params.size() - 1);
+            List<String> beforeRedirect = new ArrayList<>();
+            for(String param : params) {
+                if(param.equals(">>") || param.equals("1>>") || param.equals("2>>")) {
+                    isRedirect = true;
+                    if(param.equals("2>>")) {
+                        stderr = true;
+                    }
+                }
+                if(!isRedirect) {
+                    beforeRedirect.add(param);
+                }
+            }
+            beforeRedirect.add(0, commandName);
+            if(isRedirect) {
+                ProcessBuilder processBuilder = new ProcessBuilder(beforeRedirect);
+
+                if(!stderr) {
+                    processBuilder.redirectOutput(ProcessBuilder.Redirect.appendTo(new File(redirectFileName)));
+                    Process process = processBuilder.start();
+                    DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                    err.start();
+                    err.join();
+                    process.waitFor();
+                } else {
+                    processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(new File(redirectFileName)));
                     Process process = processBuilder.start();
                     DealProcessStream err = new DealProcessStream(process.getInputStream());
                     err.start();
