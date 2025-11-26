@@ -25,6 +25,7 @@ public class Main {
                                                      .history(new DefaultHistory()) // 默认历史实现
                                                      .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
+                                                     .option(LineReader.Option.MENU_COMPLETE, true)
                                                      .variable(LineReader.HISTORY_FILE,
                                                                java.nio.file.Paths.get("target/jline-history")) // 持久化文件
                                                      .variable(LineReader.HISTORY_SIZE, 5) // 内存保留条数
