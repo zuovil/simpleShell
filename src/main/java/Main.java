@@ -1,118 +1,140 @@
+import org.fusesource.jansi.AnsiConsole;
+import org.jline.reader.Completer;
+import org.jline.reader.LineReader;
+import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.impl.history.DefaultHistory;
+import org.jline.terminal.Terminal;
+import org.jline.terminal.TerminalBuilder;
+
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        // TODO: Uncomment the code below to pass the first stage
-        // 不能在循环里面重复创建Scanner，会导致 System.in 的底层流状态混乱。将会导致多个 Scanner 抢 System.in 的 buffer；
-        // 有的会执行 close()，把底层输入流关掉，JVM 认为 System.in 被关闭 → 读取 Process 的 stdout 时也可能报 Stream closed（因为底层都是 FileDescriptor 0/1/2，相关联）
-        Scanner scanner = new Scanner(System.in);
-        while(true) {
-            Map<String, String> pathMap = getEnv();
-            System.out.print("$ ");
-            String input = scanner.nextLine();
-            if(input.equals("exit 0") | input.equals("exit")) {
-                break;
-            }
-            Command command = Command.fromInput(input);
-            if(command == null){
-                continue;
-            }
-            String commandName = command.getCommandName();
-            List<String> params = command.getArgs();
-            if("echo".equals(commandName)) {
-                // 检测重定向
-                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
-                    redirectOutput(params, commandName);
-                    continue;
-                }
-                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
-                    redirectAppendOutput(params, commandName);
-                    continue;
-                }
-                for (String param : params) {
-                    System.out.print(param);
-                }
-                System.out.println();
-                continue;
-            }
+        Map<String, String> pathMap = getEnv();
+        try (Terminal terminal = TerminalBuilder.builder().system(true).provider("jni").build()) {
+            List<String> commands  = new ArrayList<>(pathMap.keySet());
+            List<String> builtinCommands = new ArrayList<>(Arrays.asList("echo", "cat","type", "exit"));
+            commands.addAll(builtinCommands);
+            Completer completer = new StringsCompleter(commands);
+            // 使用终端
+            LineReader lineReader = LineReaderBuilder.builder()
+                                                     .terminal(terminal)
+                                                     .completer(completer) // 自动补全
+                                                     .history(new DefaultHistory()) // 默认历史实现
+                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
+                                                     .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
+                                                     .variable(LineReader.HISTORY_FILE,
+                                                               java.nio.file.Paths.get("target/jline-history")) // 持久化文件
+                                                     .variable(LineReader.HISTORY_SIZE, 5) // 内存保留条数
+                                                     .build();
 
-            if("cat".equals(commandName)) {
-                // 移除空格
-                params.removeIf(" "::equals);
-                // 检测重定向
-                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
-                    redirectOutput(params, commandName);
+            while (true) {
+                String input = lineReader.readLine("$ ");
+
+                if (input.equals("exit 0") | input.equals("exit")) {
+                    break;
+                }
+                Command command = Command.fromInput(input);
+                if (command == null) {
                     continue;
                 }
-                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
-                    redirectAppendOutput(params, commandName);
+                String       commandName = command.getCommandName();
+                List<String> params      = command.getArgs();
+                if ("echo".equals(commandName)) {
+                    // 检测重定向
+                    if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
+                        redirectOutput(params, commandName);
+                        continue;
+                    }
+                    if (params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                        redirectAppendOutput(params, commandName);
+                        continue;
+                    }
+                    for (String param : params) {
+                        System.out.print(param);
+                    }
+                    System.out.println();
                     continue;
                 }
-                params.add(0, "cat");
-                Process process = new ProcessBuilder(params).start();
-                //新启两个线程
-                DealProcessStream out = new DealProcessStream(process.getInputStream());
-                DealProcessStream err = new DealProcessStream(process.getErrorStream());
-                out.start();
-                err.start();
-                out.join();
-                err.join();
-                process.waitFor();
-                // destroy() 只在需要强制杀进程时使用。否则可能正在读，IO就关闭了，然后报错Stream closed
+
+                if ("cat".equals(commandName)) {
+                    // 移除空格
+                    params.removeIf(" "::equals);
+                    // 检测重定向
+                    if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
+                        redirectOutput(params, commandName);
+                        continue;
+                    }
+                    if (params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                        redirectAppendOutput(params, commandName);
+                        continue;
+                    }
+                    params.add(0, "cat");
+                    Process process = new ProcessBuilder(params).start();
+                    //新启两个线程
+                    DealProcessStream out = new DealProcessStream(process.getInputStream());
+                    DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                    out.start();
+                    err.start();
+                    out.join();
+                    err.join();
+                    process.waitFor();
+                    // destroy() 只在需要强制杀进程时使用。否则可能正在读，IO就关闭了，然后报错Stream closed
 //                process.destroy();
-                continue;
+                    continue;
 
+                }
+                if ("type".equals(commandName)) {
+                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit"));
+                    String      arg     = String.join(" ", params);
+                    if (builtin.contains(arg)) {
+                        System.out.println(arg + " is a shell builtin");
+                        continue;
+                    }
+
+                    if (pathMap.containsKey(arg)) {
+                        System.out.println(arg + " is " + pathMap.get(arg));
+                        continue;
+                    }
+
+                    System.out.println(arg + ": not found");
+                    continue;
+                }
+
+                if (pathMap.containsKey(commandName)) {
+                    // 移除空格
+                    params.removeIf(" "::equals);
+                    // 检测重定向
+                    if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
+                        redirectOutput(params, commandName);
+                        continue;
+                    }
+                    if (params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
+                        redirectAppendOutput(params, commandName);
+                        continue;
+                    }
+                    params.add(0, commandName);
+                    Process process = Runtime.getRuntime().exec(params.toArray(new String[0]));
+                    // 得到process的输出的方式是getInputStream，这是因为我们要从Java 程序的角度来看，外部程序的输出对于Java来说就是输入，反之亦然。
+                    // 外部程序在执行结束后需自动关闭，否则不管是字符流还是字节流均由于既读不到数据，又读不到流结束符，从而出现阻塞Java进程运行的情况
+                    // 如果exec启动的Process没有正确处理（stdout/stderr 有一个未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
+                    // 内部执行挂起（或资源耗尽），从而将会影响到下一次exec
+                    // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
+                    // 遇到process流阻塞通常有两个方法解决，一个是并发处理两个流信息，开启两个线程分别处理输出流与错误流（仅在同一个线程处理两个流依旧会发生阻塞，因为尽管看上去同步但仍有先后顺序，所以必须用线程并发）
+                    // 2.将两个流合并为一个流，使用ProcessBuilder，将其redirectErrorStream(true)；将输出流与错误流合并
+                    DealProcessStream out = new DealProcessStream(process.getInputStream());
+                    DealProcessStream err = new DealProcessStream(process.getErrorStream());
+                    out.start();
+                    err.start();
+                    out.join();
+                    err.join();
+                    process.waitFor();
+                    continue;
+                }
+                System.out.println(input + ": command not found");
             }
-            if("type".equals(commandName)) {
-                Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit"));
-                String arg = String.join(" ", params);
-                if(builtin.contains(arg)){
-                    System.out.println(arg + " is a shell builtin");
-                    continue;
-                }
-
-                if(pathMap.containsKey(arg)){
-                    System.out.println(arg + " is " + pathMap.get(arg));
-                    continue;
-                }
-
-                System.out.println(arg + ": not found");
-                continue;
-            }
-
-            if(pathMap.containsKey(commandName)){
-                // 移除空格
-                params.removeIf(" "::equals);
-                // 检测重定向
-                if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
-                    redirectOutput(params, commandName);
-                    continue;
-                }
-                if(params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
-                    redirectAppendOutput(params, commandName);
-                    continue;
-                }
-                params.add(0, commandName);
-                Process process = Runtime.getRuntime().exec(params.toArray(new String[0]));
-                // 得到process的输出的方式是getInputStream，这是因为我们要从Java 程序的角度来看，外部程序的输出对于Java来说就是输入，反之亦然。
-                // 外部程序在执行结束后需自动关闭，否则不管是字符流还是字节流均由于既读不到数据，又读不到流结束符，从而出现阻塞Java进程运行的情况
-                // 如果exec启动的Process没有正确处理（stdout/stderr 有一个未读，进程未 waitFor），导致资源没关闭、管道没释放，于是 JVM
-                // 内部执行挂起（或资源耗尽），从而将会影响到下一次exec
-                // Java只有一套 System.in/out/err（线程共享JVM的所有资源），线程可以自己创建别的流如FileOutputStream，这些都是线程自己持有的对象，不是“线程独立 IO”
-                // 遇到process流阻塞通常有两个方法解决，一个是并发处理两个流信息，开启两个线程分别处理输出流与错误流（仅在同一个线程处理两个流依旧会发生阻塞，因为尽管看上去同步但仍有先后顺序，所以必须用线程并发）
-                // 2.将两个流合并为一个流，使用ProcessBuilder，将其redirectErrorStream(true)；将输出流与错误流合并
-                DealProcessStream out = new DealProcessStream(process.getInputStream());
-                DealProcessStream err = new DealProcessStream(process.getErrorStream());
-                out.start();
-                err.start();
-                out.join();
-                err.join();
-                process.waitFor();
-                continue;
-            }
-            System.out.println(input + ": command not found");
         }
     }
 
@@ -143,7 +165,8 @@ public class Main {
                     }
                 } else {
                     if(parent.canExecute()) {
-                        String fileName = parent.getName().lastIndexOf(".") != -1 ? parent.getName().substring(0, parent.getName().lastIndexOf(".")) : parent.getName();
+                        String fileName = parent.getName().lastIndexOf(".") != -1 ?
+                                parent.getName().substring(0, parent.getName().lastIndexOf(".")) : parent.getName();
                         env.put(fileName, parent.getAbsolutePath());
                     }
                 }
@@ -186,9 +209,9 @@ public class Main {
                 } else {
                     processBuilder.redirectError(new File(redirectFileName));
                     Process process = processBuilder.start();
-                    DealProcessStream err = new DealProcessStream(process.getInputStream());
-                    err.start();
-                    err.join();
+                    DealProcessStream out = new DealProcessStream(process.getInputStream());
+                    out.start();
+                    out.join();
                     process.waitFor();
                 }
             }
@@ -230,9 +253,9 @@ public class Main {
                 } else {
                     processBuilder.redirectError(ProcessBuilder.Redirect.appendTo(new File(redirectFileName)));
                     Process process = processBuilder.start();
-                    DealProcessStream err = new DealProcessStream(process.getInputStream());
-                    err.start();
-                    err.join();
+                    DealProcessStream out = new DealProcessStream(process.getInputStream());
+                    out.start();
+                    out.join();
                     process.waitFor();
                 }
             }

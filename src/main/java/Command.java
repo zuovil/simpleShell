@@ -71,7 +71,7 @@ public class Command {
                     } else if (c == '\\') {
                         if (i + 1 < input.length()) {
                             char nxt = input.charAt(i + 1);
-                            if (nxt == '"') {
+                            if (nxt == '"' || nxt == '\'') {
                                 // '\"test script\"'
                                 // cat "/tmp/owl/\"f 21\""
                                 if(quoteDepth <= 1) {
@@ -79,9 +79,15 @@ public class Command {
                                 } else {
                                     quoteDepth --;
                                 }
-                                cur.append(nxt);
+                                // /不能转义单引号，因此额外排除单引号的情况，即只允许转义双引号
+                                // 单引号模式的核心：里面不能出现单引号；在 '...' 中出现的所有字符都必须被完全原样保留，不允许转义，不允许解释，不允许扩展。【初始规则】
+                                if(nxt == '"' ) {
+                                    cur.append(nxt);
+                                    i++;
+                                } else {
+                                    cur.append('\\');
+                                }
 
-                                i++;
                             } else if(nxt == '\\') {
                                 cur.append(nxt);
                                 i++;
