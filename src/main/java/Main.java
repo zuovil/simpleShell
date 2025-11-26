@@ -37,12 +37,15 @@ public class Main {
                 if (input.equals("exit 0") | input.equals("exit")) {
                     break;
                 }
+                List<String> test =
+                        commands.stream().filter(command -> command.startsWith("xyz")).collect(Collectors.toList());
                 Command command = Command.fromInput(input);
                 if (command == null) {
                     continue;
                 }
                 String       commandName = command.getCommandName();
                 List<String> params      = command.getArgs();
+                System.out.println(commandName + ": " + params + "test列表: " + test);
                 if ("echo".equals(commandName)) {
                     // 检测重定向
                     if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
