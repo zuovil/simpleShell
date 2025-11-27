@@ -29,7 +29,7 @@ public class StringsCompleter implements Completer {
         assert strings != null;
         this.candidates = new ArrayList<>();
         for (String string : strings) {
-            candidates.add(new Candidate(AttributedString.stripAnsi(string), string, null, null, " ", null, true));
+            candidates.add(new Candidate(string, string, null, null, " ", null, true));
         }
     }
 

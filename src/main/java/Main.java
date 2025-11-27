@@ -1,13 +1,12 @@
 import org.fusesource.jansi.AnsiConsole;
-import org.jline.reader.Completer;
-import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
+import org.jline.reader.*;
 import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 
 public class Main {
@@ -17,6 +16,7 @@ public class Main {
             List<String> commands  = new ArrayList<>(pathMap.keySet());
             List<String> builtinCommands = new ArrayList<>(Arrays.asList("echo", "cat","type", "exit"));
             commands.addAll(builtinCommands);
+            commands = commands.stream().distinct().sorted().collect(Collectors.toList());
             Completer completer = new StringsCompleter(commands);
             // 使用终端
             LineReader lineReader = LineReaderBuilder.builder()
@@ -25,27 +25,31 @@ public class Main {
                                                      .history(new DefaultHistory()) // 默认历史实现
                                                      .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
-                                                     .option(LineReader.Option.MENU_COMPLETE, true)
+                                                     .option(LineReader.Option.AUTO_MENU, false)
                                                      .variable(LineReader.HISTORY_FILE,
                                                                java.nio.file.Paths.get("target/jline-history")) // 持久化文件
                                                      .variable(LineReader.HISTORY_SIZE, 5) // 内存保留条数
                                                      .build();
+            DoubleTabWidget widget = new DoubleTabWidget(lineReader, commands);
+            lineReader.getWidgets().put("double-tab", widget);
+            // 绑定 Tab 键到自定义 widget
+            lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
 
             while (true) {
+//                List<String> test =
+//                        commands.stream().filter(command -> command.startsWith("xyz")).collect(Collectors.toList());
+//                System.out.println( test);
                 String input = lineReader.readLine("$ ");
 
                 if (input.equals("exit 0") | input.equals("exit")) {
                     break;
                 }
-                List<String> test =
-                        commands.stream().filter(command -> command.startsWith("xyz")).collect(Collectors.toList());
                 Command command = Command.fromInput(input);
                 if (command == null) {
                     continue;
                 }
                 String       commandName = command.getCommandName();
                 List<String> params      = command.getArgs();
-                System.out.println(commandName + ": " + params + "test列表: " + test);
                 if ("echo".equals(commandName)) {
                     // 检测重定向
                     if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
