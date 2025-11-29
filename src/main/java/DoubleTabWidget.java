@@ -1,5 +1,4 @@
 import org.jline.reader.LineReader;
-import org.jline.reader.ParsedLine;
 import org.jline.reader.Widget;
 import org.jline.terminal.Terminal;
 
@@ -22,12 +21,12 @@ public class DoubleTabWidget implements Widget {
 
     @Override
     public boolean apply() {
-        Terminal terminal = reader.getTerminal();;
+        Terminal terminal = reader.getTerminal();
         String line= reader.getBuffer().toString();
         int pos = reader.getBuffer().cursor();
 
         String prefix = line.substring(0, pos); // 光标前的内容
-        List<String> matches = commands.stream().filter(cmd -> cmd.startsWith(prefix)).collect(Collectors.toList());
+        List<String> matches = commands.stream().filter(cmd -> cmd.startsWith(prefix)).sorted().collect(Collectors.toList());
 
         try {
             if (matches.isEmpty()) {
@@ -41,7 +40,13 @@ public class DoubleTabWidget implements Widget {
                 reader.getBuffer().write(match);
             } else {
                 // 多个匹配
-                if (showMatchesOnNextTab) {
+                String commonPrefix = getShortestPrefix(prefix, matches); // 获取最短公共前缀
+
+                if (!commonPrefix.equals(prefix)) {
+                    // 如果有更新的公共前缀，补全前缀
+                    reader.getBuffer().clear();
+                    reader.getBuffer().write(commonPrefix); // 将公共前缀写入命令行
+                } else if (showMatchesOnNextTab) {
                     // 第二次 Tab → 打印所有候选
                     terminal.writer().println();
                     terminal.writer().println(String.join("  ", matches));
@@ -61,5 +66,34 @@ public class DoubleTabWidget implements Widget {
         }
 
         return true;
+    }
+
+    // 从候选列表获取最短前缀
+    private String getShortestPrefix(String prefix, List<String> commands) {
+        if (commands == null || commands.isEmpty()) {
+            return "";
+        }
+        String commonPrefix = commands.get(0);
+
+        // 遍历其它命令并逐步缩短公共前缀
+        for (int i = 1; i < commands.size(); i++) {
+            String command = commands.get(i);
+
+            // 比较公共前缀与每个命令的前缀
+            int j = 0;
+            while (j < commonPrefix.length() && j < command.length() && commonPrefix.charAt(j) == command.charAt(j)) {
+                j++;
+            }
+
+            // 更新公共前缀
+            commonPrefix = commonPrefix.substring(0, j);
+
+            // 如果没有共同前缀，返回空字符串
+            if (commonPrefix.isEmpty()) {
+                return "";
+            }
+        }
+
+        return commonPrefix; // 返回最终的公共前缀
     }
 }
