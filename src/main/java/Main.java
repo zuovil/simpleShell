@@ -104,7 +104,8 @@ public class Main {
                 if ("history".equals(commandName)) {
                     History history = lineReader.getHistory();
                     for (History.Entry entry : history) {
-                        System.out.println(entry.line());
+                        int count = entry.index() + 1;
+                        System.out.println("    " + count + "  " + entry.line());
                     }
                     continue;
                 }
