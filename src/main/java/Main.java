@@ -24,8 +24,8 @@ public class Main {
 //                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
                                                      .option(LineReader.Option.AUTO_MENU, false)
-                                                     .variable(LineReader.HISTORY_FILE,
-                                                               java.nio.file.Paths.get("history.txt")) // 持久化文件
+//                                                     .variable(LineReader.HISTORY_FILE,
+//                                                               java.nio.file.Paths.get("history.txt")) // 持久化文件
                                                      .variable(LineReader.HISTORY_SIZE, 5) // 内存保留条数
                                                      .build();
             DoubleTabWidget widget = new DoubleTabWidget(lineReader, commands);
@@ -103,11 +103,25 @@ public class Main {
                 }
                 if ("history".equals(commandName)) {
                     History history = lineReader.getHistory();
-                    for (History.Entry entry : history) {
-                        int count = entry.index() + 1;
-                        System.out.println("    " + count + "  " + entry.line());
+                    // History的index存在重写，return offset + index，得到的不是真实值，因此需要使用默认迭代器的index
+                    List<History.Entry> list = new ArrayList<>();
+                    for (History.Entry e : history) list.add(e);
+                    if(params.isEmpty()) {
+                        for (History.Entry entry : list) {
+                            int count = entry.index() + 1;
+                            System.out.println("    " + count + "  " + entry.line());
+                        }
+                    } else {
+                        int count = Integer.parseInt(params.get(0));
+                        int size = history.size();
+                        // 只打印最后 count 条
+                        for (int i = size - count; i < size; i++) {
+                            History.Entry entry = list.get(i);
+                            System.out.println("    " + (entry.index() + 1) + "  " + entry.line());
+                        }
                     }
                     continue;
+
                 }
                 if ("type".equals(commandName)) {
                     Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history"));
