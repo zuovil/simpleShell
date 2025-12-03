@@ -21,11 +21,11 @@ public class Main {
                                                      .terminal(terminal)
                                                      .completer(completer) // 自动补全
                                                      .history(new DefaultHistory()) // 默认历史实现
-                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
+//                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
                                                      .option(LineReader.Option.AUTO_MENU, false)
                                                      .variable(LineReader.HISTORY_FILE,
-                                                               java.nio.file.Paths.get("target/jline-history")) // 持久化文件
+                                                               java.nio.file.Paths.get("history.txt")) // 持久化文件
                                                      .variable(LineReader.HISTORY_SIZE, 5) // 内存保留条数
                                                      .build();
             DoubleTabWidget widget = new DoubleTabWidget(lineReader, commands);
@@ -101,8 +101,15 @@ public class Main {
                     continue;
 
                 }
+                if ("history".equals(commandName)) {
+                    History history = lineReader.getHistory();
+                    for (History.Entry entry : history) {
+                        System.out.println(entry.line());
+                    }
+                    continue;
+                }
                 if ("type".equals(commandName)) {
-                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit"));
+                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history"));
                     String      arg     = String.join(" ", params);
                     if (builtin.contains(arg)) {
                         System.out.println(arg + " is a shell builtin");
