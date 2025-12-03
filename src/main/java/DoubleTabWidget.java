@@ -2,7 +2,6 @@ import org.jline.reader.LineReader;
 import org.jline.reader.Widget;
 import org.jline.terminal.Terminal;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 

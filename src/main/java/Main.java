@@ -58,6 +58,11 @@ public class Main {
                         redirectAppendOutput(params, commandName);
                         continue;
                     }
+                    if (params.contains("|")) {
+                        params.removeIf(" "::equals);
+                        pipelineOutput(params, commandName);
+                        continue;
+                    }
                     for (String param : params) {
                         System.out.print(param);
                     }
@@ -75,6 +80,10 @@ public class Main {
                     }
                     if (params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
                         redirectAppendOutput(params, commandName);
+                        continue;
+                    }
+                    if (params.contains("|")) {
+                        pipelineOutput(params, commandName);
                         continue;
                     }
                     params.add(0, "cat");
@@ -119,6 +128,10 @@ public class Main {
                     }
                     if (params.contains(">>") || params.contains("1>>") || params.contains("2>>")) {
                         redirectAppendOutput(params, commandName);
+                        continue;
+                    }
+                    if (params.contains("|")) {
+                        pipelineOutput(params, commandName);
                         continue;
                     }
                     params.add(0, commandName);
@@ -267,4 +280,23 @@ public class Main {
             }
         }
     }
+
+    private static void pipelineOutput(List<String> params, String commandName) throws Exception {
+        // 检测管道输入
+        if(params.contains("|")) {
+            List<String> commands = new ArrayList<>();
+            commands.add("sh");
+            commands.add("-c");
+            params.add(0, commandName);
+            String input = String.join(" ", params);
+            commands.add(input);
+            // sh -c 允许用户在命令行中直接运行一段字符串形式的 Shell 脚本或命令
+            Process process = new ProcessBuilder(commands).start();
+            DealProcessStream out = new DealProcessStream(process.getInputStream());
+            out.start();
+            out.join();
+            process.waitFor();
+        }
+    }
+
 }
