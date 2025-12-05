@@ -5,6 +5,7 @@ import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
@@ -128,18 +129,19 @@ public class Main {
                                     history.add(historyCommand);
                                 }
 
-//                                Map<String, Instant> historyMap = new LinkedHashMap<>();
-//                                for (History.Entry e : history) {
-//                                    historyMap.put(e.line(), e.time());
-//                                }
-//                                List<Map.Entry<String, Instant>> historyList = new ArrayList<>(historyMap.entrySet());
-//                                Map.Entry<String, Instant> last = historyList.get(historyList.size() - 1);
-//                                historyList.add(0, last);
-//                                historyList.remove(historyList.size() - 1);
-//                                history.purge();
-//                                for (Map.Entry<String, Instant> e : historyList) history.add(e.getValue(), e.getKey());
-//                                lineReader.setVariable(LineReader.HISTORY_FILE, java.nio.file.Paths.get(savePath));
-//                                history.save();
+                            } else if("-w".equals(params.get(0))) {
+                                String historyFilePath = params.get(2);
+                                Path path = Paths.get(historyFilePath);
+                                if (Files.notExists(path)) {
+                                    Files.createFile(path);
+                                }
+                                try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path)))){
+                                    for(History.Entry entry : history) {
+                                        br.write(entry.line());
+                                        br.newLine();
+                                    }
+                                    br.flush();
+                                }
                             }
 
                     } else {
