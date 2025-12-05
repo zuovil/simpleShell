@@ -7,7 +7,7 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.time.Instant;
+import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +36,7 @@ public class Main {
             lineReader.getWidgets().put("double-tab", widget);
             // 绑定 Tab 键到自定义 widget
             lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
+            int lastAppendIndex = 0;
 
             while (true) {
 //                List<String> test =
@@ -142,6 +143,29 @@ public class Main {
                                     }
                                     br.flush();
                                 }
+                            } else if("-a".equals(params.get(0))) {
+                                String historyFilePath = params.get(2);
+                                Path path = Paths.get(historyFilePath);
+                                List<String> appendHistory = new ArrayList<>();
+                                if(lastAppendIndex != 0) {
+                                    for(History.Entry entry : list) {
+                                        if(entry.index() > lastAppendIndex) {
+                                            appendHistory.add(entry.line());
+                                        }
+                                    }
+                                } else {
+                                    for (History.Entry e : list) appendHistory.add(e.line());
+                                }
+
+                                try(BufferedWriter br =
+                                            new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path, StandardOpenOption.APPEND)))){
+                                    for(String line : appendHistory) {
+                                        br.append(line);
+                                        br.newLine();
+                                    }
+                                    br.flush();
+                                }
+                                lastAppendIndex = history.last();
                             }
 
                     } else {
