@@ -4,6 +4,9 @@ import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -111,15 +114,43 @@ public class Main {
                             int count = entry.index() + 1;
                             System.out.println("    " + count + "  " + entry.line());
                         }
+                    } else if (params.size() > 2) {
+                            if("-r".equals(params.get(0))) {
+                                String historyFilePath = params.get(2);
+                                List<String> historyList = new ArrayList<>();
+                                try(BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(historyFilePath))))){
+                                    String line;
+                                    while ((line = br.readLine()) != null) {
+                                        historyList.add(line);
+                                    }
+                                }
+                                for(String historyCommand : historyList) {
+                                    history.add(historyCommand);
+                                }
+
+//                                Map<String, Instant> historyMap = new LinkedHashMap<>();
+//                                for (History.Entry e : history) {
+//                                    historyMap.put(e.line(), e.time());
+//                                }
+//                                List<Map.Entry<String, Instant>> historyList = new ArrayList<>(historyMap.entrySet());
+//                                Map.Entry<String, Instant> last = historyList.get(historyList.size() - 1);
+//                                historyList.add(0, last);
+//                                historyList.remove(historyList.size() - 1);
+//                                history.purge();
+//                                for (Map.Entry<String, Instant> e : historyList) history.add(e.getValue(), e.getKey());
+//                                lineReader.setVariable(LineReader.HISTORY_FILE, java.nio.file.Paths.get(savePath));
+//                                history.save();
+                            }
+
                     } else {
-                        int count = Integer.parseInt(params.get(0));
-                        int size = history.size();
-                        // 只打印最后 count 条
-                        for (int i = size - count; i < size; i++) {
-                            History.Entry entry = list.get(i);
-                            System.out.println("    " + (entry.index() + 1) + "  " + entry.line());
-                        }
+                    int count = Integer.parseInt(params.get(0));
+                    int size = history.size();
+                    // 只打印最后 count 条
+                    for (int i = size - count; i < size; i++) {
+                        History.Entry entry = list.get(i);
+                        System.out.println("    " + (entry.index() + 1) + "  " + entry.line());
                     }
+                }
                     continue;
 
                 }
