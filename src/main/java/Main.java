@@ -38,6 +38,8 @@ public class Main {
             // 绑定 Tab 键到自定义 widget
             lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
             int lastAppendIndex = 0;
+            // 预载入index
+            int preloadIndex = 0;
 
             // 预载入历史记录
             if(historyFilePath != null) {
@@ -52,12 +54,10 @@ public class Main {
                 for(String historyCommand : historyList) {
                     history.add(historyCommand);
                 }
+                preloadIndex = history.last();
             }
 
             while (true) {
-//                List<String> test =
-//                        commands.stream().filter(command -> command.startsWith("xyz")).collect(Collectors.toList());
-//                System.out.println( test);
                 String input = lineReader.readLine("$ ");
 
                 if (input.equals("exit 0") | input.equals("exit")) {
@@ -66,9 +66,19 @@ public class Main {
                         if (Files.notExists(historyFilePath)) {
                             Files.createFile(historyFilePath);
                         }
-                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath, StandardOpenOption.APPEND)))){
+                        List<String> appendHistory = new ArrayList<>();
+                        if(preloadIndex != 0) {
                             for(History.Entry entry : history) {
-                                br.append(entry.line());
+                                if(entry.index() > preloadIndex) {
+                                    appendHistory.add(entry.line());
+                                }
+                            }
+                        } else {
+                            for (History.Entry e : history) appendHistory.add(e.line());
+                        }
+                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath, StandardOpenOption.APPEND)))){
+                            for(String line : appendHistory) {
+                                br.append(line);
                                 br.newLine();
                             }
                             br.flush();
