@@ -66,9 +66,9 @@ public class Main {
                         if (Files.notExists(historyFilePath)) {
                             Files.createFile(historyFilePath);
                         }
-                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath)))){
+                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath, StandardOpenOption.APPEND)))){
                             for(History.Entry entry : history) {
-                                br.write(entry.line());
+                                br.append(entry.line());
                                 br.newLine();
                             }
                             br.flush();
