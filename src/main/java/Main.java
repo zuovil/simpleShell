@@ -14,6 +14,7 @@ import java.util.stream.Collectors;
 public class Main {
     public static void main(String[] args) throws Exception {
         Map<String, String> pathMap = getEnv();
+        Path historyFilePath = getHistoryPath();
         try (Terminal terminal = TerminalBuilder.builder().system(true).provider("jni").build()) {
             List<String> commands  = new ArrayList<>(pathMap.keySet());
             List<String> builtinCommands = new ArrayList<>(Arrays.asList("echo", "cat","type", "exit"));
@@ -38,6 +39,21 @@ public class Main {
             lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
             int lastAppendIndex = 0;
 
+            // 预载入历史记录
+            if(historyFilePath != null) {
+                History history = lineReader.getHistory();
+                List<String> historyList = new ArrayList<>();
+                try(BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(historyFilePath)))){
+                    String line;
+                    while ((line = br.readLine()) != null) {
+                        historyList.add(line);
+                    }
+                }
+                for(String historyCommand : historyList) {
+                    history.add(historyCommand);
+                }
+            }
+
             while (true) {
 //                List<String> test =
 //                        commands.stream().filter(command -> command.startsWith("xyz")).collect(Collectors.toList());
@@ -51,8 +67,8 @@ public class Main {
                 if (command == null) {
                     continue;
                 }
-                String       commandName = command.getCommandName();
-                List<String> params      = command.getArgs();
+                String commandName = command.getCommandName();
+                List<String> params = command.getArgs();
                 if ("echo".equals(commandName)) {
                     // 检测重定向
                     if (params.contains(">") || params.contains("1>") || params.contains("2>")) {
@@ -118,9 +134,9 @@ public class Main {
                         }
                     } else if (params.size() > 2) {
                             if("-r".equals(params.get(0))) {
-                                String historyFilePath = params.get(2);
+                                String historyFilePathStr = params.get(2);
                                 List<String> historyList = new ArrayList<>();
-                                try(BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(historyFilePath))))){
+                                try(BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(historyFilePathStr))))){
                                     String line;
                                     while ((line = br.readLine()) != null) {
                                         historyList.add(line);
@@ -131,8 +147,8 @@ public class Main {
                                 }
 
                             } else if("-w".equals(params.get(0))) {
-                                String historyFilePath = params.get(2);
-                                Path path = Paths.get(historyFilePath);
+                                String historyFilePathStr = params.get(2);
+                                Path path = Paths.get(historyFilePathStr);
                                 if (Files.notExists(path)) {
                                     Files.createFile(path);
                                 }
@@ -144,8 +160,8 @@ public class Main {
                                     br.flush();
                                 }
                             } else if("-a".equals(params.get(0))) {
-                                String historyFilePath = params.get(2);
-                                Path path = Paths.get(historyFilePath);
+                                String historyFilePathStr = params.get(2);
+                                Path path = Paths.get(historyFilePathStr);
                                 List<String> appendHistory = new ArrayList<>();
                                 if(lastAppendIndex != 0) {
                                     for(History.Entry entry : list) {
@@ -271,6 +287,15 @@ public class Main {
             }
         }
         return env;
+    }
+
+    // 获取历史文件路径
+    private static Path getHistoryPath() {
+        String historyFile = System.getenv("HISTFILE");
+        if(historyFile == null) {
+            return null;
+        }
+        return Paths.get(historyFile);
     }
 
     private static void redirectOutput(List<String> params, String commandName) throws Exception {
