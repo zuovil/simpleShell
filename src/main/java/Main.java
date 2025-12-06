@@ -61,6 +61,19 @@ public class Main {
                 String input = lineReader.readLine("$ ");
 
                 if (input.equals("exit 0") | input.equals("exit")) {
+                    if(historyFilePath != null) {
+                        History history = lineReader.getHistory();
+                        if (Files.notExists(historyFilePath)) {
+                            Files.createFile(historyFilePath);
+                        }
+                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath)))){
+                            for(History.Entry entry : history) {
+                                br.write(entry.line());
+                                br.newLine();
+                            }
+                            br.flush();
+                        }
+                    }
                     break;
                 }
                 Command command = Command.fromInput(input);
