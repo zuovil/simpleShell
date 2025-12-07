@@ -67,6 +67,7 @@ public class Main {
                         // .Entry并不是按顺序的得出的结果，多次运行结果每一次都可能不一样，因此需要使用List来重置其迭代器
                         List<History.Entry> list = new ArrayList<>();
                         for (History.Entry e : history) list.add(e);
+                        list = list.stream().sorted(Comparator.comparing(History.Entry::index)).collect(Collectors.toList());
                         if (Files.notExists(historyFilePath)) {
                             Files.createFile(historyFilePath);
                         }
@@ -154,6 +155,7 @@ public class Main {
                     // History的index存在重写，return offset + index，得到的不是真实值，因此需要使用默认迭代器的index
                     List<History.Entry> list = new ArrayList<>();
                     for (History.Entry e : history) list.add(e);
+                    list = list.stream().sorted(Comparator.comparing(History.Entry::index)).collect(Collectors.toList());
                     if(params.isEmpty()) {
                         for (History.Entry entry : list) {
                             int count = entry.index() + 1;
