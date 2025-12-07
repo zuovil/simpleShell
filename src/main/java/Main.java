@@ -63,18 +63,22 @@ public class Main {
                 if (input.equals("exit 0") | input.equals("exit")) {
                     if(historyFilePath != null) {
                         History history = lineReader.getHistory();
+                        // 坑： History的迭代器存在重写 public int index() {return offset + index;} 因此遍历得到的History
+                        // .Entry并不是按顺序的得出的结果，多次运行结果每一次都可能不一样，因此需要使用List来重置其迭代器
+                        List<History.Entry> list = new ArrayList<>();
+                        for (History.Entry e : history) list.add(e);
                         if (Files.notExists(historyFilePath)) {
                             Files.createFile(historyFilePath);
                         }
                         List<String> appendHistory = new ArrayList<>();
                         if(preloadIndex != 0) {
-                            for(History.Entry entry : history) {
+                            for(History.Entry entry : list) {
                                 if(entry.index() > preloadIndex) {
                                     appendHistory.add(entry.line());
                                 }
                             }
                         } else {
-                            for (History.Entry e : history) appendHistory.add(e.line());
+                            for (History.Entry e : list) appendHistory.add(e.line());
                         }
                         try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath, StandardOpenOption.APPEND)))){
                             for(String line : appendHistory) {
