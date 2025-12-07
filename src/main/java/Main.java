@@ -26,7 +26,7 @@ public class Main {
                                                      .terminal(terminal)
                                                      .completer(completer) // 自动补全
                                                      .history(new DefaultHistory()) // 默认历史实现
-//                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
+                                                     .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
                                                      .option(LineReader.Option.AUTO_MENU, false)
 //                                                     .variable(LineReader.HISTORY_FILE,
