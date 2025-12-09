@@ -1,0 +1,9 @@
+echo apple grape raspberry
+echo strawberry apple
+echo mango pear orange
+echo banana strawberry apple
+echo pear orange blueberry
+history
+history
+history
+history
