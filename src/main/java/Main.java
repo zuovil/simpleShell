@@ -1,3 +1,5 @@
+import jnr.posix.POSIX;
+import jnr.posix.POSIXFactory;
 import org.jline.reader.*;
 import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
@@ -14,7 +16,6 @@ import java.util.stream.Collectors;
 public class Main {
     public static void main(String[] args) throws Exception {
         Map<String, String> pathMap = getEnv();
-        Path historyFilePath = getHistoryPath();
         try (Terminal terminal = TerminalBuilder.builder().system(true).provider("jni").build()) {
             List<String> commands  = new ArrayList<>(pathMap.keySet());
             List<String> builtinCommands = new ArrayList<>(Arrays.asList("echo", "cat","type", "exit"));
@@ -34,6 +35,8 @@ public class Main {
             lineReader.getWidgets().put("double-tab", widget);
             // 绑定 Tab 键到自定义 widget
             lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
+            // 使用posix用以动态切换工作目录
+            POSIX posix = POSIXFactory.getPOSIX(new PosixHandler(), true);
 
             while (true) {
                 String input = lineReader.readLine("$ ");
@@ -132,7 +135,7 @@ public class Main {
 
                 }
                 if ("type".equals(commandName)) {
-                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history","pwd"));
+                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history","pwd","cd"));
                     String arg = String.join(" ", params);
                     if (builtin.contains(arg)) {
                         System.out.println(arg + " is a shell builtin");
@@ -151,6 +154,24 @@ public class Main {
                 if("pwd".equals(commandName)) {
                     String currentDir = System.getProperty("user.dir");
                     System.out.println(currentDir);
+                    continue;
+                }
+
+                if("cd".equals(commandName)) {
+                    if(params.isEmpty()) {
+                        System.out.println("cd: : No such file or directory");
+                    }
+                    String path = params.get(0);
+                    File file = new File(path);
+                    if(!file.exists()) {
+                        System.out.println("cd: " + path + ": No such file or directory");
+                        continue;
+                    }
+                    if(file.isFile()) {
+                        path = file.getParent();
+                    }
+                    System.setProperty("user.dir", path);
+                    posix.chdir(path);
                     continue;
                 }
 

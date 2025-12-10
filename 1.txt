@@ -7,3 +7,17 @@ history
 history
 history
 history
+pwd
+cd f
+pwd
+cd f:
+pwd
+cd f:
+cd f:
+pwd
+cd f:/
+pwd
+cd /f/
+pwd
+pwd
+cd f:/
