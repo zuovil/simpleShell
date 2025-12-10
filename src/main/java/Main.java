@@ -29,60 +29,16 @@ public class Main {
                                                      .option(LineReader.Option.HISTORY_IGNORE_DUPS, false) // 允许重复记录
                                                      .option(LineReader.Option.DISABLE_EVENT_EXPANSION, true) // 禁用自动转义
                                                      .option(LineReader.Option.AUTO_MENU, false)
-//                                                     .variable(LineReader.HISTORY_FILE,
-//                                                               java.nio.file.Paths.get("history.txt")) // 持久化文件
-
                                                      .build();
             DoubleTabWidget widget = new DoubleTabWidget(lineReader, commands);
             lineReader.getWidgets().put("double-tab", widget);
             // 绑定 Tab 键到自定义 widget
             lineReader.getKeyMaps().get(LineReader.MAIN).bind(new Reference("double-tab"), "\t");
-//            int lastAppendIndex = 0;
-//            // 预载入index
-//            int preloadIndex = 0;
-
-            // 预载入历史记录
-//            if(historyFilePath != null) {
-//                History history = lineReader.getHistory();
-//                List<String> historyList = Files.readAllLines(historyFilePath);
-//                for(String historyCommand : historyList) {
-//                    history.add(historyCommand);
-//                }
-//                preloadIndex = history.last();
-//            }
 
             while (true) {
                 String input = lineReader.readLine("$ ");
 
                 if (input.equals("exit 0") | input.equals("exit")) {
-//                    if(historyFilePath != null) {
-//                        History history = lineReader.getHistory();
-//                        // 坑： History的迭代器存在重写 public int index() {return offset + index;} 因此遍历得到的History
-//                        // .Entry并不是按顺序的得出的结果，多次运行结果每一次都可能不一样，因此需要使用List来重置其迭代器
-//                        List<History.Entry> list = new ArrayList<>();
-//                        for (History.Entry e : history) list.add(e);
-//                        list = list.stream().sorted(Comparator.comparing(History.Entry::index)).collect(Collectors.toList());
-//                        if (Files.notExists(historyFilePath)) {
-//                            Files.createFile(historyFilePath);
-//                        }
-//                        List<String> appendHistory = new ArrayList<>();
-//                        if(preloadIndex != 0) {
-//                            for(History.Entry entry : list) {
-//                                if(entry.index() > preloadIndex) {
-//                                    appendHistory.add(entry.line());
-//                                }
-//                            }
-//                        } else {
-//                            for (History.Entry e : list) appendHistory.add(e.line());
-//                        }
-//                        try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(historyFilePath, StandardOpenOption.APPEND)))){
-//                            for(String line : appendHistory) {
-//                                br.append(line);
-//                                br.newLine();
-//                            }
-//                            br.flush();
-//                        }
-//                    }
                     break;
                 }
                 Command command = Command.fromInput(input);
@@ -146,10 +102,6 @@ public class Main {
                 }
                 if ("history".equals(commandName)) {
                     History history = lineReader.getHistory();
-                    // History的index存在重写，return offset + index，得到的不是真实值，因此需要使用默认迭代器的index
-//                    List<History.Entry> list = new ArrayList<>();
-//                    for (History.Entry e : history) list.add(e);
-//                    list = list.stream().sorted(Comparator.comparing(History.Entry::index)).collect(Collectors.toList());
                     if(params.isEmpty()) {
                         for (History.Entry entry : history) {
                             System.out.println("    " + (entry.index() + 1) + "  " + entry.line());
@@ -157,55 +109,13 @@ public class Main {
                     } else if (params.size() > 2) {
                             if("-r".equals(params.get(0))) {
                                 String historyFilePathStr = params.get(2);
-//                                List<String> historyList = new ArrayList<>();
-//                                try(BufferedReader br = new BufferedReader(new InputStreamReader(Files.newInputStream(Paths.get(historyFilePathStr))))){
-//                                    String line;
-//                                    while ((line = br.readLine()) != null) {
-//                                        historyList.add(line);
-//                                    }
-//                                }
-//                                for(String historyCommand : historyList) {
-//                                    history.add(historyCommand);
-//                                }
                                 history.read(Paths.get(historyFilePathStr), false);
 
                             } else if("-w".equals(params.get(0))) {
                                 String historyFilePathStr = params.get(2);
-//                                Path path = Paths.get(historyFilePathStr);
-//                                if (Files.notExists(path)) {
-//                                    Files.createFile(path);
-//                                }
-//                                try(BufferedWriter br = new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path)))){
-//                                    for(History.Entry entry : history) {
-//                                        br.write(entry.line());
-//                                        br.newLine();
-//                                    }
-//                                    br.flush();
-//                                }
                                 history.write(Paths.get(historyFilePathStr), false);
                             } else if("-a".equals(params.get(0))) {
                                 String historyFilePathStr = params.get(2);
-//                                Path path = Paths.get(historyFilePathStr);
-//                                List<String> appendHistory = new ArrayList<>();
-//                                if(lastAppendIndex != 0) {
-//                                    for(History.Entry entry : list) {
-//                                        if(entry.index() > lastAppendIndex) {
-//                                            appendHistory.add(entry.line());
-//                                        }
-//                                    }
-//                                } else {
-//                                    for (History.Entry e : list) appendHistory.add(e.line());
-//                                }
-//
-//                                try(BufferedWriter br =
-//                                            new BufferedWriter(new OutputStreamWriter(Files.newOutputStream(path, StandardOpenOption.APPEND)))){
-//                                    for(String line : appendHistory) {
-//                                        br.append(line);
-//                                        br.newLine();
-//                                    }
-//                                    br.flush();
-//                                }
-//                                lastAppendIndex = history.last();
                                 history.append(Paths.get(historyFilePathStr), true);
                             }
 
@@ -222,8 +132,8 @@ public class Main {
 
                 }
                 if ("type".equals(commandName)) {
-                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history"));
-                    String      arg     = String.join(" ", params);
+                    Set<String> builtin = new HashSet<>(Arrays.asList("type", "echo", "exit","history","pwd"));
+                    String arg = String.join(" ", params);
                     if (builtin.contains(arg)) {
                         System.out.println(arg + " is a shell builtin");
                         continue;
@@ -235,6 +145,12 @@ public class Main {
                     }
 
                     System.out.println(arg + ": not found");
+                    continue;
+                }
+
+                if("pwd".equals(commandName)) {
+                    String currentDir = System.getProperty("user.dir");
+                    System.out.println(currentDir);
                     continue;
                 }
 
