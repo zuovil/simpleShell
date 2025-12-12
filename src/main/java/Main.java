@@ -162,15 +162,14 @@ public class Main {
                         System.out.println("cd: : No such file or directory");
                     }
                     String path = params.get(0);
-                    File file = new File(path);
-                    if(!file.exists()) {
+                    String dir;
+                    try {
+                        dir = getRelativePath(path);
+                    } catch (Exception e) {
                         System.out.println("cd: " + path + ": No such file or directory");
                         continue;
                     }
-                    if(file.isFile()) {
-                        path = file.getParent();
-                    }
-                    System.setProperty("user.dir", path);
+                    System.setProperty("user.dir", dir);
                     posix.chdir(path);
                     continue;
                 }
@@ -362,6 +361,63 @@ public class Main {
             out.start();
             out.join();
             process.waitFor();
+        }
+    }
+
+    private static String getRelativePath(String path) {
+        File file;
+        if (path == null) {
+            throw new RuntimeException();
+        }
+        if (path.isEmpty()) {
+            return System.getProperty("user.dir");
+        }
+        if (path.startsWith("./")) {
+            String newPath = path.substring(2);
+            file = new File(System.getProperty("user.dir"), newPath);
+            if (!file.exists()) {
+                throw new RuntimeException();
+            }
+            return file.getAbsolutePath();
+        } else if (path.startsWith("../")) {
+            int    count   = 1;
+            String newPath = path.substring(3);
+            file = new File(System.getProperty("user.dir"));
+            while (true) {
+                if (newPath.startsWith("../")) {
+                    newPath = newPath.substring(3);
+                    count++;
+                } else {
+                    break;
+                }
+            }
+            for (int i = 0; i < count; i++) {
+                if (file.getParent() == null) {
+                    throw new RuntimeException();
+                }
+                file = new File(file.getParent());
+                if (!file.exists()) {
+                    throw new RuntimeException();
+                }
+            }
+            File end = new File(file, newPath);
+            if (!end.exists()) {
+                throw new RuntimeException();
+            }
+            return end.getAbsolutePath();
+        } else if (path.startsWith("/")) {
+            file = new File(path);
+            if (!file.exists()) {
+                throw new RuntimeException();
+            }
+            return file.getAbsolutePath();
+        } else {
+            // 例如 src/java 这种相对目录
+            file = new File(System.getProperty("user.dir"), path);
+            if (!file.exists()) {
+                throw new RuntimeException();
+            }
+            return file.getAbsolutePath();
         }
     }
 

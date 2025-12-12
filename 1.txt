@@ -21,3 +21,5 @@ cd /f/
 pwd
 pwd
 cd f:/
+pwd
+cd ../
