@@ -1,15 +1,11 @@
 import jnr.posix.POSIX;
 import jnr.posix.POSIXFactory;
 import org.jline.reader.*;
-import org.jline.reader.impl.history.DefaultHistory;
 import org.jline.terminal.Terminal;
 import org.jline.terminal.TerminalBuilder;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -250,15 +246,6 @@ public class Main {
         return env;
     }
 
-    // 获取历史文件路径
-    private static Path getHistoryPath() {
-        String historyFile = System.getenv("HISTFILE");
-        if(historyFile == null) {
-            return null;
-        }
-        return Paths.get(historyFile);
-    }
-
     private static void redirectOutput(List<String> params, String commandName) throws Exception {
         // 检测重定向
         if(params.contains(">") || params.contains("1>") || params.contains("2>")) {
@@ -364,6 +351,7 @@ public class Main {
         }
     }
 
+    // 解析相对路径
     private static String getRelativePath(String path) {
         File file;
         if (path == null) {
@@ -409,6 +397,19 @@ public class Main {
             file = new File(path);
             if (!file.exists()) {
                 throw new RuntimeException();
+            }
+            return file.getAbsolutePath();
+        } else if("~".equals(path)) {
+            String homePath = System.getenv("HOME");
+            if (homePath == null) {
+                throw new RuntimeException();
+            }
+            file = new File(homePath);
+            if (!file.exists()) {
+                throw new RuntimeException();
+            }
+            if(file.isFile()) {
+                file = new File(file.getParent());
             }
             return file.getAbsolutePath();
         } else {
